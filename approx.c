@@ -22,7 +22,10 @@
 
 /* Includes */
 #include <stdio.h>
+
+#if defined(LIBM_SIN) || defined(LIBM_COS) || defined(LIBM_ATAN) || defined(LIBM_EXP) || defined(LIBM_LOG)
 #include <math.h>
+#endif
 
 /* Type definitions */
 #if __MSC_VER
