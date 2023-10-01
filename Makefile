@@ -32,7 +32,7 @@ libm_log: approx.c
 	gcc -O2 approx.c -DLIBM_LOG -lm -o libm_log
 
 clean:
-	rm -vf sin cos atan exp log libm_sin libm_cos libm_atan libm_exp libm_log sin_output.txt cos_output.txt atan_output.txt libm_sin_output.txt libm_cos_output.txt libm_atan_output.txt
+	rm -vf sin cos atan exp log libm_sin libm_cos libm_atan libm_exp libm_log sin_output.txt cos_output.txt atan_output.txt exp_output.txt log_output.txt libm_sin_output.txt libm_cos_output.txt libm_atan_output.txt libm_exp_output.txt libm_log_output.txt
 
 test: all
 	@echo "*** Running sin program"

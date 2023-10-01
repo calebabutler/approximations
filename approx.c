@@ -334,7 +334,7 @@ int main(void) {
 #elif defined(LIBM_COS)
 		printf("%.60e %.60e\n", x, cos(x));
 #elif defined(ATAN)
-		printf("%.60e %.60e\n", x, Math_Atan(x));
+		printf("%.60e %.60e\n", x, Atan(x));
 #elif defined(LIBM_ATAN)
 		printf("%.60e %.60e\n", x, atan(x));
 #elif defined(EXP)
