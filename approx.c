@@ -1,10 +1,18 @@
 
-// Includes
+/* Includes */
 #include <stdio.h>
-#include <stdint.h>
 #include <math.h>
 
-// Function prototypes
+/* Type definitions */
+#if __MSC_VER
+	typedef unsigned __int64 cc_uint64;
+#elif __GNUC__
+	typedef __UINT64_TYPE__ cc_uint64;
+#else
+	typedef unsigned long long cc_uint64;
+#endif
+
+/* Function prototypes */
 static double Floord(double);
 
 static double SinStage1(double);
@@ -21,7 +29,13 @@ static double Exp2(double);
 static double Log2Stage1(double);
 static double Log2(double);
 
-// Global constants
+static double Math_Sin(double);
+static double Math_Cos(double);
+static double Math_Atan2(double, double);
+static double Math_Exp(double);
+static double Math_Log(double);
+
+/* Global constants */
 static const double PI = 3.1415926535897932384626433832795028841971693993751058;
 static const double DIV_2_PI = 1.0 / (2.0 * PI);
 static const double INF = 1.0/0.0;
@@ -54,8 +68,9 @@ double SinStage1(double x) {
 
 	double P = A[5];
 	double x_2 = x * x;
+	int i;
 
-	for (int i = 4; i >= 0; i--) {
+	for (i = 4; i >= 0; i--) {
 		P *= x_2;
 		P += A[i];
 	}
@@ -109,8 +124,9 @@ double AtanStage1(double x) {
 
 	double P = A[5];
 	double x_2 = x * x;
+	int i;
 
-	for (int i = 4; i >= 0; i--) {
+	for (i = 4; i >= 0; i--) {
 		P *= x_2;
 		P += A[i];
 	}
@@ -157,6 +173,7 @@ double AtanStage2(double x) {
 
 	int L = 0;
 	int R = 8;
+	double t;
 
 	while (R - L > 1) {
 		int m = (L + R) / 2;
@@ -169,7 +186,7 @@ double AtanStage2(double x) {
 	if (R <= 1)
 		return AtanStage1(x);
 
-	double t = div_x_i[R] - div_x_i_2_plus_1[R] / (div_x_i[R] + x);
+	t = div_x_i[R] - div_x_i_2_plus_1[R] / (div_x_i[R] + x);
 	if (t >= 0)
 		return (2 * R - 2) * PI / 32.0 + AtanStage1(t);
 
@@ -201,7 +218,7 @@ double Math_Atan2(double y, double x) {
  * Math_Exp2 *
  *************/
 
-// EXPB 1067
+/* EXPB 1067 */
 double Exp2Stage1(double x) {
 	const double A_P[] = {
 		.1513906799054338915894328e4,
@@ -216,16 +233,18 @@ double Exp2Stage1(double x) {
 	};
 
 	double x_2 = x * x;
+	double P, Q;
+	int i;
 
-	double P = A_P[2];
-	for (int i = 1; i >= 0; i--) {
+	P = A_P[2];
+	for (i = 1; i >= 0; i--) {
 		P *= x_2;
 		P += A_P[i];
 	}
 	P *= x;
 
-	double Q = A_Q[2];
-	for (int i = 1; i >= 0; i--) {
+	Q = A_Q[2];
+	for (i = 1; i >= 0; i--) {
 		Q *= x_2;
 		Q += A_Q[i];
 	}
@@ -235,6 +254,7 @@ double Exp2Stage1(double x) {
 
 double Exp2(double x) {
 	int x_int = (int) x;
+	union { double d; cc_uint64 i; } doi;
 
 	if (x < 0)
 		x_int--;
@@ -244,7 +264,6 @@ double Exp2(double x) {
 	if (x_int > 1023)
 		return INF;
 
-	union { double d; uint64_t i; } doi;
 	doi.i = x_int + 1023;
 	doi.i <<= 52;
 
@@ -255,7 +274,7 @@ double Exp2(double x) {
  * Math_Log2 *
  *************/
 
-// LOG2 2524
+/* LOG2 2524 */
 double Log2Stage1(double x) {
 	const double A_P[] = {
 		-.205466671951e1,
@@ -271,14 +290,17 @@ double Log2Stage1(double x) {
 		1.0,
 	};
 
-	double P = A_P[3];
-	for (int i = 2; i >= 0; i--) {
+	double P, Q;
+	int i;
+
+	P = A_P[3];
+	for (i = 2; i >= 0; i--) {
 		P *= x;
 		P += A_P[i];
 	}
 
-	double Q = A_Q[3];
-	for (int i = 2; i >= 0; i--) {
+	Q = A_Q[3];
+	for (i = 2; i >= 0; i--) {
 		Q *= x;
 		Q += A_Q[i];
 	}
@@ -287,16 +309,18 @@ double Log2Stage1(double x) {
 }
 
 double Log2(double x) {
+	union { double d; cc_uint64 i; } doi;
+	int integer_part;
+
 	if (x <= 0.0)
 		return DOUBLE_NAN;
 
-	union { double d; uint64_t i; } doi;
 	doi.d = x;
-	int integer_part = (doi.i >> 52);
+	integer_part = (doi.i >> 52);
 	integer_part -= 1023;
 
-	doi.i |= (((uint64_t) 1023) << 52);
-	doi.i &= ~(((uint64_t) 1024) << 52);
+	doi.i |= (((cc_uint64) 1023) << 52);
+	doi.i &= ~(((cc_uint64) 1024) << 52);
 
 	return integer_part + Log2Stage1(doi.d);
 }
@@ -323,8 +347,9 @@ double Math_Log(double x) {
 
 int main(void) {
 	double step = 20.0/1000000.0;
+	double x;
 
-	for (double x = -10.0; x <= 10.0; x += step) {
+	for (x = -10.0; x <= 10.0; x += step) {
 #if defined(SIN)
 		printf("%.60e %.60e\n", x, Math_Sin(x));
 #elif defined(LIBM_SIN)
