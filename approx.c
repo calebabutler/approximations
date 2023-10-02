@@ -20,6 +20,23 @@
  * SOFTWARE.
  */
 
+/* This code implements the math functions sine, cosine, arctangent, the
+ * exponential function, and the logarithmic function. The code uses techniques
+ * exclusively described in the book "Computer Approximations" by John Fraser
+ * Hart (1st Edition). Each function approximates their associated math function
+ * the same way:
+ *
+ *   1. First, the function uses properties of the associated math function to
+ *      reduce the input range to a small finite interval,
+ *
+ *   2. Second, the function calculates a polynomial, rational, or similar
+ *      function that approximates the associated math function on that small
+ *      finite interval to the desired accuracy. These polynomial, rational, or
+ *      similar functions were calculated by the authors of "Computer
+ *      Approximations" using the Remez algorithm and exist in the book's
+ *      appendix.
+ */
+
 /* Includes */
 #include <stdio.h>
 
@@ -70,6 +87,8 @@ static const double SQRT2 = 1.4142135623730950488016887242096980785696718753769;
 static const double LOG2E = 1.4426950408889634073599246810018921374266459541529;
 static const double LOGE2 = 0.6931471805599453094172321214581765680755001343602;
 
+/* Calculates the floor of a double.
+ */
 double Floord(double x) {
 	if (x >= 0)
 		return (double) ((int) x);
@@ -80,6 +99,13 @@ double Floord(double x) {
  * Math_Sin *
  ************/
 
+/* Calculates the 5th degree polynomial function SIN 2922 listed in the book's
+ * appendix.
+ *
+ * Associated math function: sin(pi/6 * x)
+ * Allowed input range: [0, 1]
+ * Precision: 16.47
+ */
 double SinStage1(double x) {
 	const double A[] = {
 		.52359877559829885532,
@@ -102,11 +128,24 @@ double SinStage1(double x) {
 	return P;
 }
 
+/* Uses the property
+ *   sin(x) = sin(x/3) * (3 - 4 * (sin(x/3))^2)
+ * to reduce the input range of sin(x) to [0, pi/6].
+ *
+ * Associated math function: sin(2 * pi * x)
+ * Allowed input range: [0, 0.25]
+ */
 double SinStage2(double x) {
 	double sin_6 = SinStage1(x * 4.0);
 	return sin_6 * (3.0 - 4.0 * sin_6 * sin_6);
 }
 
+/* Uses the properties of sine to reduce the input range from [0, 2*pi] to [0,
+ * pi/2].
+ *
+ * Associated math function: sin(2 * pi * x)
+ * Allowed input range: [0, 1]
+ */
 double SinStage3(double x) {
 	if (x < 0.25)
 		return SinStage2(x);
@@ -117,7 +156,12 @@ double SinStage3(double x) {
 	return -SinStage2(1.0 - x);
 }
 
-
+/* Since sine has a period of 2*pi, this function maps any real number to a
+ * number from [0, 2*pi].
+ *
+ * Associated math function: sin(x)
+ * Allowed input range: anything
+ */
 double Math_Sin(double x) {
 	double x_div_pi = x * DIV_2_PI;
 	return SinStage3(x_div_pi - Floord(x_div_pi));
@@ -127,6 +171,12 @@ double Math_Sin(double x) {
  * Math_Cos *
  ************/
 
+/* This function works just like the above sine function, except it shifts the
+ * input by pi/2, using the property cos(x) = sin(x + pi/2).
+ *
+ * Associated math function: cos(x)
+ * Allowed input range: anything
+ */
 double Math_Cos(double x) {
 	double x_div_pi_shifted = x * DIV_2_PI + 0.25;
 	return SinStage3(x_div_pi_shifted - Floord(x_div_pi_shifted));
@@ -136,6 +186,13 @@ double Math_Cos(double x) {
  * Math_Atan2 *
  **************/
 
+/* Calculates the 5th degree polynomial ARCTN 4903 listed in the book's
+ * appendix.
+ *
+ * Associated math function: arctan(x)
+ * Allowed input range: [0, tan(pi/32)]
+ * Precision: 16.52
+ */
 double AtanStage1(double x) {
 	const double A[] = {
 		.99999999999969557,
@@ -158,6 +215,19 @@ double AtanStage1(double x) {
 	return P;
 }
 
+/* This function finds out in which partition the non-negative real number x
+ * resides out of 8 partitions, which are precomputed. It then uses the
+ * following law:
+ *
+ *   t = x_i^{-1} - (x_i^{-2} + 1)/(x_i^{-1} + x)
+ *   arctan(x) = arctan(x_i) + arctan(t)
+ *
+ * where x_i = tan((2i - 2)*pi/32) and i is the partition number. The value of t
+ * is guaranteed to be between [-tan(pi/32), tan(pi/32)].
+ *
+ * Associated math function: arctan(x)
+ * Allowed input range: [0, infinity]
+ */
 double AtanStage2(double x) {
 	const double X_i[] = {
 		0.0,
@@ -217,12 +287,22 @@ double AtanStage2(double x) {
 	return (2 * R - 2) * PI / 32.0 - AtanStage1(-t);
 }
 
+/* Uses the property arctan(x) = -arctan(-x).
+ *
+ * Associated math function: arctan(x)
+ * Allowed input range: anything
+ */
 double Atan(double x) {
 	if (x >= 0)
 		return AtanStage2(x);
 	return -AtanStage2(-x);
 }
 
+/* Implements the function atan2 using Atan.
+ *
+ * Associated math function: atan2(y, x)
+ * Allowed input range: anything
+ */
 double Math_Atan2(double y, double x) {
 	if (x > 0)
 		return Atan(y / x);
@@ -238,11 +318,18 @@ double Math_Atan2(double y, double x) {
 	return DOUBLE_NAN;
 }
 
-/*************
- * Math_Exp2 *
- *************/
+/************
+ * Math_Exp *
+ ************/
 
-/* EXPB 1067 */
+/* Calculates the function EXPB 1067 listed in the book's appendix. It is of the
+ * form
+ *   (Q(x^2) + x*P(x^2)) / (Q(x^2) - x*P(x^2))
+ *
+ * Associated math function: 2^x
+ * Allowed input range: [-1/2, 1/2]
+ * Precision: 18.08
+ */
 double Exp2Stage1(double x) {
 	const double A_P[] = {
 		.1513906799054338915894328e4,
@@ -276,6 +363,14 @@ double Exp2Stage1(double x) {
 	return (Q + P) / (Q - P);
 }
 
+/* Reduces the range of 2^x to [-1/2, 1/2] by using the property
+ *   2^x = 2^(integer value) * 2^(fractional part).
+ * 2^(integer value) can be calculated by directly manipulating the bits of the
+ * double-precision floating point representation.
+ *
+ * Associated math function: 2^x
+ * Allowed input range: anything
+ */
 double Exp2(double x) {
 	int x_int = (int) x;
 	union { double d; cc_uint64 i; } doi;
@@ -294,11 +389,27 @@ double Exp2(double x) {
 	return doi.d * SQRT2 * Exp2Stage1(x - (double) x_int - 0.5);
 }
 
-/*************
- * Math_Log2 *
- *************/
+/* Uses the fact that
+ *   exp(x) = 2^(x * log_2(e)).
+ *
+ * Associated math function: exp(x)
+ * Allowed input range: anything
+ */
+double Math_Exp(double x) {
+	return Exp2(x * LOG2E);
+}
 
-/* LOG2 2524 */
+/************
+ * Math_Log *
+ ************/
+
+/* Calculates the 3rd/3rd degree rational function LOG2 2524 listed in the
+ * book's appendix.
+ *
+ * Associated math function: log_2(x)
+ * Allowed input range: [0.5, 1]
+ * Precision: 8.32
+ */
 double Log2Stage1(double x) {
 	const double A_P[] = {
 		-.205466671951e1,
@@ -332,6 +443,14 @@ double Log2Stage1(double x) {
 	return P / Q;
 }
 
+/* Reduces the range of log_2(x) by using the property that
+ *   log_2(x) = (x's exponent part) + log_2(x's mantissa part)
+ * So, by manipulating the bits of the double-precision floating point number
+ * one can reduce the range of the logarithm function.
+ *
+ * Associated math function: log_2(x)
+ * Allowed input range: anything
+ */
 double Log2(double x) {
 	union { double d; cc_uint64 i; } doi;
 	int integer_part;
@@ -349,18 +468,12 @@ double Log2(double x) {
 	return integer_part + Log2Stage1(doi.d);
 }
 
-/************
- * Math_Exp *
- ************/
-
-double Math_Exp(double x) {
-	return Exp2(x * LOG2E);
-}
-
-/************
- * Math_Log *
- ************/
-
+/* Uses the property that
+ *   log_e(x) = log_2(x) * log_e(2).
+ *
+ * Associated math function: log_e(x)
+ * Allowed input range: anything
+ */
 double Math_Log(double x) {
 	return Log2(x) * LOGE2;
 }
