@@ -12,7 +12,7 @@ run the command:
 
     > sudo apt-get install build-essential git time python3 python3-matplotlib python3-numpy
 
-The, run the following commands to test:
+Then, run the following commands to test:
 
     > git clone https://github.com/calebabutler/approximations.git
     > cd approximations
