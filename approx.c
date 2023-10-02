@@ -79,8 +79,9 @@ static double Math_Log(double);
 /* Global constants */
 static const double PI = 3.1415926535897932384626433832795028841971693993751058;
 static const double DIV_2_PI = 1.0 / (2.0 * PI);
-static const double INF = 1.0/0.0;
-static const double DOUBLE_NAN = 0.0/0.0;
+static const double INF = 1.0 / 0.0;
+static const double NEGATIVE_INF = 1.0 / -0.0;
+static const double DOUBLE_NAN = 0.0 / 0.0;
 
 static const double SQRT2 = 1.4142135623730950488016887242096980785696718753769;
 
@@ -163,7 +164,12 @@ double SinStage3(double x) {
  * Allowed input range: anything
  */
 double Math_Sin(double x) {
-	double x_div_pi = x * DIV_2_PI;
+	double x_div_pi;
+
+	if (x == INF || x == NEGATIVE_INF || x == DOUBLE_NAN)
+		return DOUBLE_NAN;
+
+	x_div_pi = x * DIV_2_PI;
 	return SinStage3(x_div_pi - Floord(x_div_pi));
 }
 
@@ -178,7 +184,12 @@ double Math_Sin(double x) {
  * Allowed input range: anything
  */
 double Math_Cos(double x) {
-	double x_div_pi_shifted = x * DIV_2_PI + 0.25;
+	double x_div_pi_shifted;
+
+	if (x == INF || x == NEGATIVE_INF || x == DOUBLE_NAN)
+		return DOUBLE_NAN;
+
+	x_div_pi_shifted = x * DIV_2_PI + 0.25;
 	return SinStage3(x_div_pi_shifted - Floord(x_div_pi_shifted));
 }
 
@@ -293,6 +304,12 @@ double AtanStage2(double x) {
  * Allowed input range: anything
  */
 double Atan(double x) {
+	if (x == DOUBLE_NAN)
+		return DOUBLE_NAN;
+	if (x == NEGATIVE_INF)
+		return -PI / 2.0;
+	if (x == INF)
+		return PI / 2.0;
 	if (x >= 0)
 		return AtanStage2(x);
 	return -AtanStage2(-x);
@@ -372,8 +389,15 @@ double Exp2Stage1(double x) {
  * Allowed input range: anything
  */
 double Exp2(double x) {
-	int x_int = (int) x;
+	int x_int;
 	union { double d; cc_uint64 i; } doi;
+
+	if (x == INF || x == DOUBLE_NAN)
+		return x;
+	if (x == NEGATIVE_INF)
+		return 0.0;
+
+	x_int = (int) x;
 
 	if (x < 0)
 		x_int--;
@@ -455,7 +479,10 @@ double Log2(double x) {
 	union { double d; cc_uint64 i; } doi;
 	int integer_part;
 
-	if (x <= 0.0)
+	if (x == INF)
+		return INF;
+
+	if (x == NEGATIVE_INF || x == DOUBLE_NAN || x <= 0.0)
 		return DOUBLE_NAN;
 
 	doi.d = x;
